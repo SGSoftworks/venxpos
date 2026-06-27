@@ -1,0 +1,81 @@
+# Auto detect text files and normalize line endings to LF
+* text=auto
+
+# Bash files
+*.bash text eol=lf
+*.sh text eol=lf
+
+# Batch files
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Java files
+*.java text diff=java
+
+# JavaScript/TypeScript
+*.js text diff=javascript
+*.jsx text diff=javascript
+*.ts text diff=typescript
+*.tsx text diff=typescript
+
+# Python
+*.py text diff=python
+
+# SQL
+*.sql text diff=sql
+
+# Shell
+*.sh text eol=lf
+
+# YAML
+*.yaml text
+*.yml text
+
+# JSON
+*.json text
+
+# Markdown
+*.md text diff=markdown
+
+# Config files
+.gitattributes text
+.gitignore text
+.env text
+.env.example text
+
+# Binary files
+*.db binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mov binary
+*.mp4 binary
+*.mp3 binary
+*.flv binary
+*.fla binary
+
+# Archive
+*.zip binary
+*.7z binary
+*.gz binary
+*.rar binary
+*.tar binary
+
+# Build artifacts
+*.o binary
+*.pyc binary
+*.pyo binary
+*.class binary
+*.jar binary
+
+# IDE files
+.vscode/** text diff=json
+.idea/** text
+
+# Node
+node_modules/ -text
+
+# Tauri
+src-tauri/target/ -text
