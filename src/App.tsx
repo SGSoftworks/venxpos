@@ -6,7 +6,7 @@ import { supabase } from './lib/supabase';
 import { useAppStore } from './store/useAppStore';
 import { ConnectionGuard } from './components/ConnectionGuard';
 
-const SAAS_URL = 'https://venxpos-saas.vercel.app';
+const SAAS_URL = 'https://venxpos.vercel.app';
 
 function App() {
   const { session, setSession, setSubscription } = useAppStore();

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAppStore } from '../store/useAppStore';
 
+const SAAS_URL = 'https://venxpos.vercel.app';
+
 export const Receipt: React.FC = () => {
   const { lastCompletedSale: sale, subscription, session } = useAppStore();
   const [sucursalData, setSucursalData] = useState<{ nit: string; direccion: string; telefono: string }>({ nit: '', direccion: '', telefono: '' });
@@ -50,7 +52,7 @@ export const Receipt: React.FC = () => {
       {sale.montoRecibido > 0 && (<div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginTop: '2px' }}><span>Recibido:</span><span>${fmt2(sale.montoRecibido)}</span></div>)}
       {sale.cambioEntregado > 0 && (<div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}><span>Cambio:</span><span>${fmt2(sale.cambioEntregado)}</span></div>)}
       <div style={{ borderBottom: '1px dashed #666', margin: '8px 0' }} />
-      <div style={{ textAlign: 'center', fontSize: '11px', marginTop: '10px' }}><p style={{ margin: '0', fontStyle: 'italic' }}>*** GRACIAS POR SU COMPRA ***</p><p style={{ margin: '4px 0 0 0', fontSize: '9px', color: '#888' }}>VenxPOS — Desarrollado por JGSoftworks</p><p style={{ margin: '2px 0 0 0', fontSize: '8px', color: '#888' }}>www.venxpos.com</p></div>
+      <div style={{ textAlign: 'center', fontSize: '11px', marginTop: '10px' }}><p style={{ margin: '0', fontStyle: 'italic' }}>*** GRACIAS POR SU COMPRA ***</p><p style={{ margin: '4px 0 0 0', fontSize: '9px', color: '#888' }}>VenxPOS — Desarrollado por JGSoftworks</p><p style={{ margin: '2px 0 0 0', fontSize: '8px', color: '#888' }}>www.venxpos.com</p><p style={{ margin: '2px 0 0 0', fontSize: '7px', color: '#aaa' }}>WhatsApp: +57 322 8372341</p><p style={{ margin: '2px 0 0 0', fontSize: '7px', color: '#aaa' }}>Gestiona tu suscripcion en {SAAS_URL}</p></div>
     </div>
   );
 };

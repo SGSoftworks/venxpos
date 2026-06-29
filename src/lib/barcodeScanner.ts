@@ -34,6 +34,9 @@ const playBeep = (type: 'success' | 'error') => {
   } catch { /* Audio no disponible */ }
 };
 
+/** Se actualiza con Date.now() cada vez que se completa un escaneo válido */
+export let lastScanAt = 0;
+
 export const setBarcodeIgnore = (fn: () => boolean) => {
   shouldIgnore = fn;
 };
@@ -58,6 +61,8 @@ export const initBarcodeScanner = (onScan: BarcodeCallback) => {
 
     if (e.key === 'Enter') {
       if (buffer.length >= MIN_LENGTH && buffer.length <= MAX_LENGTH) {
+        e.preventDefault();
+        lastScanAt = Date.now();
         callback?.(buffer);
       }
       buffer = '';
@@ -69,13 +74,15 @@ export const initBarcodeScanner = (onScan: BarcodeCallback) => {
       const now = Date.now();
       if (lastKeyTime && now - lastKeyTime > SCAN_SPEED_MS) {
         buffer = '';
+      } else if (lastKeyTime) {
+        e.preventDefault();
       }
       lastKeyTime = now;
       buffer += e.key;
     }
   };
 
-  window.addEventListener('keydown', handler);
+  window.addEventListener('keydown', handler, { capture: true });
 };
 
 export { playBeep };

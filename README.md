@@ -19,7 +19,6 @@ Sistema POS (Point of Sale) profesional para supermercados, minimercados y autos
 
 | Capa | Tecnología |
 |------|-----------|
-| **Desktop** | Tauri v2 (Rust) |
 | **Frontend** | React 19 + TypeScript + Vite 8 |
 | **Estilos** | Tailwind CSS 4 |
 | **Estado** | Zustand 5 |
@@ -49,14 +48,12 @@ VITE_SUPABASE_ANON_KEY=<anon-key>
 
 ```bash
 npm run dev        # Vite dev server (puerto 5173)
-npm run tauri dev  # Tauri desktop + Vite
 ```
 
 ## Build Producción
 
 ```bash
 npm run build       # TypeScript + Vite bundle
-npm run tauri build # Tauri desktop installer
 ```
 
 ## Estructura
@@ -67,7 +64,6 @@ venxpos/
 │   ├── components/    # Componentes React
 │   ├── lib/           # Utilidades (supabase, pdfExport, saveFile, barcodeScanner)
 │   └── store/         # Zustand (useAppStore)
-├── src-tauri/         # Tauri Rust backend
 ├── docs/              # Documentación
 │   ├── architecture/  # Arquitectura del sistema
 │   ├── qa/            # Checklists y casos de prueba

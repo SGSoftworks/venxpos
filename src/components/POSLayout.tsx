@@ -10,6 +10,7 @@ import { AperturaTurnoModal } from './AperturaTurnoModal';
 import { ReportsPanel } from './ReportsPanel';
 import { InventoryManager } from './InventoryManager';
 import { WeightModal } from './WeightModal';
+import { QuickActionsPanel, type QAMode } from './QuickActionsPanel';
 import { FreeSaleModal } from './FreeSaleModal';
 import { ReturnModal } from './ReturnModal';
 import { SaleHistory } from './SaleHistory';
@@ -87,7 +88,9 @@ export const POSLayout: React.FC = () => {
   const [scanFeedback, setScanFeedback] = useState<'success' | null>(null);
 
   const [weightProduct, setWeightProduct] = useState<ProductRow | null>(null);
+  const [qaMode, setQaMode] = useState<QAMode>('idle');
   const [showFreeSale, setShowFreeSale] = useState(false);
+  const [freeSaleValue, setFreeSaleValue] = useState('');
   const [showReturn, setShowReturn] = useState(false);
   const [showSaleHistory, setShowSaleHistory] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
@@ -164,6 +167,7 @@ export const POSLayout: React.FC = () => {
   }, [addToCart, cart.length, currentAperturaId]);
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const lastProcessedBarcode = useRef<{ code: string; time: number }>({ code: '', time: 0 });
 
   const aperturaBloqueada = !currentAperturaId;
 
@@ -177,6 +181,7 @@ export const POSLayout: React.FC = () => {
       return;
     }
     searchDebounceRef.current = setTimeout(async () => {
+      if (searchInputRef.current?.value !== value) return;
       try {
         const term = `%${value}%`;
         const { data: results } = await supabase
@@ -203,12 +208,19 @@ export const POSLayout: React.FC = () => {
     if (!searchValue.trim()) return;
     if (aperturaBloqueada) return;
 
+    if (searchValue.length >= 6 && searchValue === lastProcessedBarcode.current.code && Date.now() - lastProcessedBarcode.current.time < 2000) {
+      setSearchValue('');
+      setSearchResults([]);
+      return;
+    }
+
     if (searchResults.length > 0 && selectedResultIndex >= 0) {
       selectSearchResult(searchResults[selectedResultIndex]);
       return;
     }
 
     const found = await parseBarcode(searchValue);
+    if (found) lastProcessedBarcode.current = { code: searchValue, time: Date.now() };
     if (!found) {
       const term = `%${searchValue}%`;
       const { data: results } = await supabase
@@ -347,7 +359,7 @@ export const POSLayout: React.FC = () => {
           break;
         case 'F9':
           e.preventDefault();
-          if (currentAperturaId) setShowFreeSale(true);
+          if (currentAperturaId) { setFreeSaleValue(''); setShowFreeSale(true); }
           break;
         case 'F10':
           e.preventDefault();
@@ -366,6 +378,10 @@ export const POSLayout: React.FC = () => {
           setShowReturn(true);
           break;
         case 'Escape':
+          if (qaMode !== 'idle') {
+            setQaMode('idle');
+            return;
+          }
           setEditQtyMode(false);
           setSearchResults([]);
           searchInputRef.current?.focus();
@@ -387,16 +403,15 @@ export const POSLayout: React.FC = () => {
           }
           break;
         case 'Delete':
-        case 'Backspace':
-          if (e.key === 'Backspace' && document.activeElement === searchInputRef.current && searchValue.length > 0) {
-            return;
+          e.preventDefault();
+          if (currentCart.length > 0) {
+            const idx = selectedCartIndex < currentCart.length ? selectedCartIndex : currentCart.length - 1;
+            requestRemoveItem(currentCart[idx].id);
           }
-          if (e.key === 'Delete' || (e.key === 'Backspace' && document.activeElement !== searchInputRef.current)) {
+          break;
+        case 'Backspace':
+          if (!(document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement)) {
             e.preventDefault();
-            if (currentCart.length > 0) {
-              const idx = selectedCartIndex < currentCart.length ? selectedCartIndex : currentCart.length - 1;
-              requestRemoveItem(currentCart[idx].id);
-            }
           }
           break;
       }
@@ -408,6 +423,7 @@ export const POSLayout: React.FC = () => {
     isPaymentModalOpen,
     showOverride,
     showFreeSale,
+    qaMode,
     showReturn,
     showAperturaModal,
     showClosure,
@@ -556,6 +572,7 @@ export const POSLayout: React.FC = () => {
           } else {
             useAppStore.getState().addToCart({ producto_id: p.id, codigo_barras: p.codigo_barras, descripcion: p.descripcion, cantidad: 1, precio_unitario: p.precio_venta, tarifa_iva: p.tarifa_iva, tarifa_impoconsumo: p.tarifa_impoconsumo });
           }
+          setSearchResults([]);
         } else if (currentView === 'inventario') {
           useAppStore.getState().setScannedBarcode(code);
         }
@@ -917,14 +934,13 @@ export const POSLayout: React.FC = () => {
               )}
             </div>
 
-            {/* Empty state */}
-            <div className={`flex-1 flex items-center justify-center text-lg font-semibold border-2 border-dashed rounded-xl m-4 ${
-              aperturaBloqueada
-                ? 'text-amber-500 border-amber-300 bg-amber-50 animate-pulse'
-                : 'text-gray-400 border-gray-200 bg-white'
-            }`}>
-              {aperturaBloqueada ? '⚠ Sin apertura de caja' : 'Sistema en espera de lectura EAN'}
-            </div>
+            <QuickActionsPanel
+              mode={qaMode}
+              onModeChange={setQaMode}
+              onOpenPaymentModal={() => { setQaMode('idle'); setPaymentModalOpen(true); }}
+              onOpenFreeSaleModal={(val) => { setFreeSaleValue(val ?? ''); setShowFreeSale(true); }}
+              aperturaBloqueada={aperturaBloqueada}
+            />
           </div>
         </div>
       )}
@@ -952,6 +968,13 @@ export const POSLayout: React.FC = () => {
       {isPaymentModalOpen && currentAperturaId && (
         <PaymentModal onClose={() => { setPaymentModalOpen(false); searchInputRef.current?.focus(); }} />
       )}
+      {showFreeSale && (
+        <FreeSaleModal
+          initialValue={freeSaleValue}
+          onClose={() => setShowFreeSale(false)}
+          onSuccess={() => {}}
+        />
+      )}
       {showOverride && (
         <AdminOverrideModal
           actionName="ELIMINAR ÍTEM DEL CARRITO"
@@ -959,7 +982,6 @@ export const POSLayout: React.FC = () => {
           onSuccess={confirmRemoveItem}
         />
       )}
-      {showFreeSale && <FreeSaleModal onClose={() => { setShowFreeSale(false); searchInputRef.current?.focus(); }} />}
       {showReturn && <ReturnModal onClose={() => { setShowReturn(false); searchInputRef.current?.focus(); }} />}
       {showSaleHistory && <SaleHistory onClose={() => setShowSaleHistory(false)} />}
       {showConfig && <ConfigPanel onClose={() => setShowConfig(false)} />}

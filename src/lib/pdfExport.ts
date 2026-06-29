@@ -2,6 +2,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { saveFile } from './saveFile';
 
+const SAAS_URL = 'https://venxpos.vercel.app';
+
 type PdfMeta = {
   titulo: string;
   subtitulo?: string;
@@ -93,7 +95,7 @@ export async function exportPdf(headers: string[], data: string[][], meta: PdfMe
       doc.setPage(i);
       doc.setFontSize(7);
       doc.text(
-        `VenxPOS — Desarrollado por JGSoftworks`,
+        `VenxPOS — JGSoftworks | +57 322 8372341 | ${SAAS_URL}`,
         doc.internal.pageSize.getWidth() / 2,
         doc.internal.pageSize.getHeight() - 14,
         { align: 'center' },

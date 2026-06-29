@@ -2,7 +2,6 @@
 
 ## Stack
 
-- **Desktop shell**: Tauri v2 (Rust) — `src-tauri/`
 - **Frontend**: React 19 + TypeScript 6 + Vite 8 + Tailwind CSS 4
 - **State**: Zustand 5 (`src/store/useAppStore.ts`)
 - **Database**: Supabase (PostgreSQL) — fuente única de verdad. Sin SQLite local.
@@ -16,7 +15,7 @@
 | `npm run dev` | Vite dev server (port 5173) |
 | `npm run build` | `tsc -b && vite build` |
 | `npm run lint` | `eslint .` |
-| `npm run tauri` | Tauri CLI passthrough |
+
 
 ## Critical TypeScript config (`tsconfig.app.json`)
 
