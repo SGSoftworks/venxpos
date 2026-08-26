@@ -51,13 +51,16 @@ export const PaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       const hash = await computeVentaHash(ventaId, fechaHora);
 
       for (const item of cart) {
-        const { data: invRow } = await supabase
+        const { data: invRow, error: invError } = await supabase
           .from('inventario_sucursal')
           .select('stock_actual')
           .eq('sucursal_id', session.sucursal_id)
           .eq('producto_id', item.producto_id)
           .maybeSingle();
-        const stock = invRow ? (invRow.stock_actual as number) : 0;
+        if (invError) {
+          throw new Error(`Error verificando stock de ${item.descripcion}: ${invError.message}`);
+        }
+        const stock = invRow?.stock_actual != null ? Number(invRow.stock_actual) : 0;
         if (stock < item.cantidad) {
           throw new Error(`Stock insuficiente: ${item.descripcion} (disponible: ${stock}, requerido: ${item.cantidad})`);
         }
@@ -81,24 +84,13 @@ export const PaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         if (detError) throw detError;
 
         for (const item of cart) {
-          try {
-            await supabase.rpc('decrementar_inventario', {
-              p_sucursal_id: session.sucursal_id, p_producto_id: item.producto_id,
-              p_cantidad: item.cantidad, p_venta_id: ventaId, p_usuario_id: session.usuario_db_id ?? session.id,
-            });
-          } catch {
-            const { data: current } = await supabase
-              .from('inventario_sucursal')
-              .select('stock_actual')
-              .eq('sucursal_id', session.sucursal_id)
-              .eq('producto_id', item.producto_id)
-              .maybeSingle();
-            if (current) {
-              await supabase.from('inventario_sucursal')
-                .update({ stock_actual: (current.stock_actual as number) - item.cantidad })
-                .eq('sucursal_id', session.sucursal_id)
-                .eq('producto_id', item.producto_id);
-            }
+          const { error: decError } = await supabase.rpc('decrementar_inventario', {
+            p_sucursal_id: session.sucursal_id, p_producto_id: item.producto_id,
+            p_cantidad: item.cantidad, p_venta_id: ventaId, p_usuario_id: session.usuario_db_id ?? session.id,
+          });
+          if (decError) {
+            console.error(`[STOCK] RPC decrementar_inventario falló para ${item.descripcion}:`, decError);
+            throw new Error(`Error descontando stock de ${item.descripcion}: ${decError.message}`);
           }
         }
       }

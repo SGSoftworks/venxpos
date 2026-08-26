@@ -76,6 +76,3 @@
 
 # Node
 node_modules/ -text
-
-# Tauri
-src-tauri/target/ -text

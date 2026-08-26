@@ -1,7 +1,7 @@
 /**
  * Cross-platform Save File dialog.
  *
- * - Chrome / Tauri WebView: showSaveFilePicker API (native dialog)
+ * - Chrome / Chromium-based browsers: showSaveFilePicker API (native dialog)
  * - Fallback: browser download (a.click)
  */
 
