@@ -18,7 +18,7 @@ export const CashRegisterClose: React.FC<Props> = ({ aperturaId, onClose, onLogo
   const [efectivoContado, setEfectivoContado] = useState('');
   const [branchName, setBranchName] = useState('');
   const [doneData, setDoneData] = useState<{ status: CloseStatus; diferencia: number; ventas: number; articulos: number; totalVendido: number; efectivoEsperado: number; efectivoContado: number; } | null>(null);
-  const [aperturaData, setAperturaData] = useState<{ fondoInicial: number; fechaApertura: string; efectivoEsperado: number; ventas: { total: number; count: number; subtotal: number; impuestos: number }; articulos: number; metodos: { metodo: string; total: number }[]; } | null>(null);
+  const [aperturaData, setAperturaData] = useState<{ fondoInicial: number; fechaApertura: string; efectivoEsperado: number; ventas: { total: number; count: number; subtotal: number }; articulos: number; metodos: { metodo: string; total: number }[]; } | null>(null);
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => { const h = (e: KeyboardEvent) => { if (e.key === 'Escape' && step !== 'done') onClose(); }; window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h); }, [onClose, step]);
@@ -41,12 +41,12 @@ export const CashRegisterClose: React.FC<Props> = ({ aperturaId, onClose, onLogo
       if (!ap) throw new Error('Apertura no encontrada');
       if (sRows && sRows.length > 0) setBranchName(sRows[0].nombre);
       const [{ data: ventasData }, { data: metodosData }] = await Promise.all([
-        supabase.from('ventas').select('total, subtotal, impuestos').eq('sucursal_id', session.sucursal_id).gte('fecha_hora', ap.fecha_apertura),
+        supabase.from('ventas').select('total, subtotal').eq('sucursal_id', session.sucursal_id).gte('fecha_hora', ap.fecha_apertura),
         supabase.from('ventas').select('metodo_pago, monto_recibido, cambio_entregado').eq('sucursal_id', session.sucursal_id).gte('fecha_hora', ap.fecha_apertura),
       ]);
-      const ventas = { total: 0, count: 0, subtotal: 0, impuestos: 0 };
+      const ventas = { total: 0, count: 0, subtotal: 0 };
       const articulos = 0;
-      if (ventasData) { ventasData.forEach(v => { ventas.total += v.total as number; ventas.subtotal += v.subtotal as number; ventas.impuestos += v.impuestos as number; ventas.count++; }); }
+      if (ventasData) { ventasData.forEach(v => { ventas.total += v.total as number; ventas.subtotal += v.subtotal as number; ventas.count++; }); }
       const efectivoVentas = (metodosData || []).filter(m => m.metodo_pago === 'EFECTIVO').reduce((s, m) => s + ((m.monto_recibido as number) - (m.cambio_entregado as number)), 0);
       const metodosMap = new Map<string, number>();
       (metodosData || []).forEach(m => { const k = m.metodo_pago as string; metodosMap.set(k, (metodosMap.get(k) || 0) + ((m.monto_recibido as number) - (m.cambio_entregado as number))); });
@@ -129,7 +129,7 @@ export const CashRegisterClose: React.FC<Props> = ({ aperturaId, onClose, onLogo
           ))}
         </div>
         <div className="border-t border-gray-200 pt-4"><h3 className="text-sm font-semibold text-gray-700 mb-3">Resumen operativo</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">{[['Ventas', d.ventas.count], ['Artículos', d.articulos.toFixed(0)], ['Subtotal', `$${fmt2(d.ventas.subtotal)}`], ['Impuestos', `$${fmt2(d.ventas.impuestos)}`]].map(([l, v], i) => (<div key={i} className="bg-white rounded-lg border border-gray-200 p-2 sm:p-3 text-center"><p className="text-[10px] sm:text-xs text-gray-500">{l}</p><p className={`text-base sm:text-xl font-bold text-gray-900`}>{v}</p></div>))}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4">{[['Ventas', d.ventas.count], ['Artículos', d.articulos.toFixed(0)], ['Subtotal', `$${fmt2(d.ventas.subtotal)}`]].map(([l, v], i) => (<div key={i} className="bg-white rounded-lg border border-gray-200 p-2 sm:p-3 text-center"><p className="text-[10px] sm:text-xs text-gray-500">{l}</p><p className={`text-base sm:text-xl font-bold text-gray-900`}>{v}</p></div>))}</div>
           <div className="bg-[var(--color-primary-light)] border border-[var(--color-primary-border)] rounded-lg p-3 flex justify-between items-center mb-3"><span className="text-sm font-semibold text-[var(--color-navy)]">Total vendido</span><span className="text-xl font-bold text-[var(--color-primary)]">${fmt2(d.ventas.total)}</span></div>
           {d.metodos.length > 0 && <div><p className="text-xs text-gray-500 font-medium mb-1.5">Métodos de pago</p><div className="grid grid-cols-2 gap-2">{d.metodos.map((m) => (<div key={m.metodo} className="bg-gray-50 rounded-lg border border-gray-200 p-2.5 flex justify-between items-center"><span className="text-sm text-gray-700 font-medium">{m.metodo}</span><span className="text-sm font-bold text-gray-900">${fmt2(m.total)}</span></div>))}</div></div>}
         </div>

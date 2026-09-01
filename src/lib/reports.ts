@@ -4,7 +4,7 @@ export const reporteVentasDia = async (sucursalId: string, start: string, end: s
   const { data } = await supabase.from('ventas').select('total').eq('sucursal_id', sucursalId).gte('fecha_hora', start).lte('fecha_hora', end);
   const rows = data || [];
   const total = rows.reduce((s, r) => s + (r.total as number), 0);
-  return { subtotal: total, impuestos: 0, total, transacciones: rows.length, ticketPromedio: rows.length > 0 ? total / rows.length : 0 };
+  return { subtotal: total, total, transacciones: rows.length, ticketPromedio: rows.length > 0 ? total / rows.length : 0 };
 };
 
 export const reporteMetodosPago = async (sucursalId: string, start: string, end: string) => {
@@ -15,11 +15,7 @@ export const reporteMetodosPago = async (sucursalId: string, start: string, end:
   return Array.from(map.entries()).map(([metodo, total]) => ({ metodo, total, porcentaje: granTotal > 0 ? (total / granTotal) * 100 : 0 }));
 };
 
-export const reporteImpuestos = async (_sucursalId: string, _start: string, _end: string) => {
-  return []; // simplified — requires join on ventas via foreign table filter
-};
-
-export const reporteProductos = async (sucursalId: string, start: string, end: string, _mode: 'mas' | 'menos') => {
+export const reporteProductos = async (sucursalId: string, start: string, end: string) => {
   const { data: ventas } = await supabase.from('ventas').select('id').eq('sucursal_id', sucursalId).gte('fecha_hora', start).lte('fecha_hora', end);
   const ventaIds = (ventas || []).map(v => v.id);
   if (ventaIds.length === 0) return [];
@@ -41,10 +37,6 @@ export const reporteProductos = async (sucursalId: string, start: string, end: s
 export const reporteCierres = async (sucursalId: string, start: string, end: string) => {
   const { data } = await supabase.from('cierres_caja').select('*').eq('sucursal_id', sucursalId).gte('fecha_cierre', start).lte('fecha_cierre', end).order('fecha_cierre', { ascending: false });
   return (data || []).map(r => ({ fecha: r.fecha_cierre as string, usuario: r.cajero_id as string, ventas: 0, articulos: 0, esperado: r.total_sistema as number, contado: r.total_fisico as number, diferencia: r.diferencia as number }));
-};
-
-export const reporteUtilidad = async (_sucursalId: string, _start: string, _end: string) => {
-  return { ingresos: 0, costo: 0, utilidad: 0, margen: 0 };
 };
 
 export const reporteMovimientos = async (sucursalId: string, start: string, end: string) => {

@@ -7,7 +7,7 @@ export const ReturnModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { session } = useAppStore();
   const [ticketSearch, setTicketSearch] = useState('');
   const [venta, setVenta] = useState<{ id: string; ticket_number: number; total: number; metodo_pago: string; fecha_hora: string } | null>(null);
-  const [detalles, setDetalles] = useState<{ id: string; producto_id: string; cantidad_o_peso: number; precio_unitario: number; subtotal: number; tarifa_iva_aplicada: number; tarifa_impoconsumo_aplicada: number }[]>([]);
+  const [detalles, setDetalles] = useState<{ id: string; producto_id: string; cantidad_o_peso: number; precio_unitario: number; subtotal: number }[]>([]);
   const [motivo, setMotivo] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,9 +29,9 @@ export const ReturnModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     if (!venta || !session) return;
     try {
       const devId = crypto.randomUUID(); const now = new Date().toISOString();
-      await supabase.from('devoluciones').insert({ id: devId, sucursal_id: session.sucursal_id, cajero_id: session.usuario_db_id ?? session.id, venta_original_id: venta.id, ticket_original: venta.ticket_number, subtotal: -venta.total, impuestos: 0, total: -venta.total, metodo_pago: venta.metodo_pago, fecha_hora: now, motivo: motivo || null, hash: crypto.randomUUID() });
+      await supabase.from('devoluciones').insert({ id: devId, sucursal_id: session.sucursal_id, cajero_id: session.usuario_db_id ?? session.id, venta_original_id: venta.id, ticket_original: venta.ticket_number, subtotal: -venta.total, total: -venta.total, metodo_pago: venta.metodo_pago, fecha_hora: now, motivo: motivo || null, hash: crypto.randomUUID() });
       for (const d of detalles) {
-        await supabase.from('devolucion_detalles').insert({ id: crypto.randomUUID(), devolucion_id: devId, producto_id: d.producto_id, cantidad: -d.cantidad_o_peso, precio_unitario: d.precio_unitario, subtotal: -d.subtotal, tarifa_iva_aplicada: d.tarifa_iva_aplicada, tarifa_impoconsumo_aplicada: d.tarifa_impoconsumo_aplicada });
+        await supabase.from('devolucion_detalles').insert({ id: crypto.randomUUID(), devolucion_id: devId, producto_id: d.producto_id, cantidad: -d.cantidad_o_peso, precio_unitario: d.precio_unitario, subtotal: -d.subtotal });
         try { await supabase.rpc('incrementar_inventario', { p_sucursal_id: session.sucursal_id, p_producto_id: d.producto_id, p_cantidad: Math.abs(d.cantidad_o_peso), p_devolucion_id: devId, p_usuario_id: session.usuario_db_id ?? session.id }); } catch { /* fallback */ }
       }
       setMsg('Devolución registrada exitosamente');

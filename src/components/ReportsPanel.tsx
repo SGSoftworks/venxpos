@@ -30,7 +30,7 @@ export const ReportsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
   const [customEnd, setCustomEnd] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
-  const [ventaDia, setVentaDia] = useState<{ subtotal: number; impuestos: number; total: number; transacciones: number; ticketPromedio: number } | null>(null);
+  const [ventaDia, setVentaDia] = useState<{ subtotal: number; total: number; transacciones: number; ticketPromedio: number } | null>(null);
   const [metodos, setMetodos] = useState<{ metodo: string; total: number; porcentaje: number }[]>([]);
   const [productos, setProductos] = useState<{ descripcion: string; cantidad: number; ingresos: number }[]>([]);
   const [cierres, setCierres] = useState<{ fecha: string; usuario: string; ventas: number; articulos: number; esperado: number; contado: number; diferencia: number }[]>([]);
@@ -49,7 +49,7 @@ export const ReportsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     if (!session) return; setLoading(true);
     const f = getFilter(filtroFecha, customStart, customEnd);
     try {
-      const [vd, mp, pr, cr, mv] = await Promise.all([reporteVentasDia(session.sucursal_id, f.start, f.end), reporteMetodosPago(session.sucursal_id, f.start, f.end), reporteProductos(session.sucursal_id, f.start, f.end, 'mas'), reporteCierres(session.sucursal_id, f.start, f.end), reporteMovimientos(session.sucursal_id, f.start, f.end)]);
+      const [vd, mp, pr, cr, mv] = await Promise.all([reporteVentasDia(session.sucursal_id, f.start, f.end), reporteMetodosPago(session.sucursal_id, f.start, f.end), reporteProductos(session.sucursal_id, f.start, f.end), reporteCierres(session.sucursal_id, f.start, f.end), reporteMovimientos(session.sucursal_id, f.start, f.end)]);
       setVentaDia(vd); setMetodos(mp); setProductos(pr); setCierres(cr); setMovimientos(mv);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -63,7 +63,7 @@ export const ReportsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     try {
       let r: { success: boolean; error?: string } = { success: false };
       switch (tab) {
-        case 'ventas': { const vd = ventaDia; r = await exportPdf(['Indicador', 'Valor'], [['Fecha', new Date().toLocaleDateString('es-CO')], ['Subtotal', `$${fmt2(vd?.subtotal ?? 0)}`], ['Impuestos', `$${fmt2(vd?.impuestos ?? 0)}`], ['Total', `$${fmt2(vd?.total ?? 0)}`], ['Transacciones', String(vd?.transacciones ?? 0)], ['Ticket Promedio', `$${fmt2(vd?.ticketPromedio ?? 0)}`]], { titulo: 'Ventas', sucursal: sn, usuario: un }); break; }
+        case 'ventas': { const vd = ventaDia; r = await exportPdf(['Indicador', 'Valor'], [['Fecha', new Date().toLocaleDateString('es-CO')], ['Subtotal', `$${fmt2(vd?.subtotal ?? 0)}`], ['Total', `$${fmt2(vd?.total ?? 0)}`], ['Transacciones', String(vd?.transacciones ?? 0)], ['Ticket Promedio', `$${fmt2(vd?.ticketPromedio ?? 0)}`]], { titulo: 'Ventas', sucursal: sn, usuario: un }); break; }
         case 'metodos': r = await exportPdf(['Método', 'Total', '%'], metodos.map(m => [m.metodo, `$${fmt2(m.total)}`, `${m.porcentaje.toFixed(1)}%`]), { titulo: 'Métodos', sucursal: sn, usuario: un }); break;
         case 'productos': r = await exportPdf(['#', 'Producto', 'Cantidad', 'Ingresos'], productos.map((p, i) => [String(i + 1), p.descripcion, p.cantidad.toFixed(3), `$${fmt2(p.ingresos)}`]), { titulo: 'Productos', sucursal: sn, usuario: un }); break;
         case 'cierres': r = await exportPdf(['Fecha', 'Usuario', 'Ventas', 'Artículos', 'Esperado', 'Contado', 'Diferencia'], cierres.map(c => [new Date(c.fecha).toLocaleDateString('es-CO'), c.usuario, String(c.ventas), c.articulos.toFixed(0), `$${fmt2(c.esperado)}`, `$${fmt2(c.contado)}`, `$${fmt2(c.diferencia)}`]), { titulo: 'Cierres', sucursal: sn, usuario: un }); break;
@@ -79,7 +79,7 @@ export const ReportsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     try {
       let ws; let name = '';
       switch (tab) {
-        case 'ventas': { const vd = ventaDia; ws = XLSX.utils.json_to_sheet([{ Fecha: new Date().toLocaleDateString('es-CO'), Subtotal: vd?.subtotal ?? 0, Impuestos: vd?.impuestos ?? 0, Total: vd?.total ?? 0, Transacciones: vd?.transacciones ?? 0, Ticket_Promedio: vd?.ticketPromedio ?? 0 }]); name = 'ventas'; break; }
+        case 'ventas': { const vd = ventaDia; ws = XLSX.utils.json_to_sheet([{ Fecha: new Date().toLocaleDateString('es-CO'), Subtotal: vd?.subtotal ?? 0, Total: vd?.total ?? 0, Transacciones: vd?.transacciones ?? 0, Ticket_Promedio: vd?.ticketPromedio ?? 0 }]); name = 'ventas'; break; }
         case 'metodos': ws = XLSX.utils.json_to_sheet(metodos.map(m => ({ Metodo: m.metodo, Total: m.total, Porcentaje: `${m.porcentaje.toFixed(1)}%` }))); name = 'metodos'; break;
         case 'productos': ws = XLSX.utils.json_to_sheet(productos.map(p => ({ Producto: p.descripcion, Cantidad: p.cantidad, Ingresos: p.ingresos }))); name = 'productos'; break;
         case 'cierres': ws = XLSX.utils.json_to_sheet(cierres.map(c => ({ Fecha: new Date(c.fecha).toLocaleDateString('es-CO'), Usuario: c.usuario, Ventas: c.ventas, Articulos: c.articulos, Esperado: c.esperado, Contado: c.contado, Diferencia: c.diferencia }))); name = 'cierres'; break;
@@ -97,7 +97,7 @@ export const ReportsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     if (!session) return; setStatusMsg('Generando CSV...');
     try {
       switch (tab) {
-        case 'ventas': { const vd = ventaDia; csvExport([{ Fecha: new Date().toLocaleDateString('es-CO'), Subtotal: vd?.subtotal ?? 0, Impuestos: vd?.impuestos ?? 0, Total: vd?.total ?? 0, Transacciones: vd?.transacciones ?? 0, Ticket_Promedio: vd?.ticketPromedio ?? 0 }], `ventas_${new Date().toISOString().slice(0, 10)}.csv`); break; }
+        case 'ventas': { const vd = ventaDia; csvExport([{ Fecha: new Date().toLocaleDateString('es-CO'), Subtotal: vd?.subtotal ?? 0, Total: vd?.total ?? 0, Transacciones: vd?.transacciones ?? 0, Ticket_Promedio: vd?.ticketPromedio ?? 0 }], `ventas_${new Date().toISOString().slice(0, 10)}.csv`); break; }
         case 'metodos': csvExport(metodos.map(m => ({ Metodo: m.metodo, Total: m.total, Porcentaje: `${m.porcentaje.toFixed(1)}%` })), `metodos_${new Date().toISOString().slice(0, 10)}.csv`); break;
         case 'productos': csvExport(productos.map(p => ({ Producto: p.descripcion, Cantidad: p.cantidad, Ingresos: p.ingresos })), `productos_${new Date().toISOString().slice(0, 10)}.csv`); break;
         case 'cierres': csvExport(cierres.map(c => ({ Fecha: new Date(c.fecha).toLocaleDateString('es-CO'), Usuario: c.usuario, Ventas: c.ventas, Articulos: c.articulos, Esperado: c.esperado, Contado: c.contado, Diferencia: c.diferencia })), `cierres_${new Date().toISOString().slice(0, 10)}.csv`); break;
@@ -134,7 +134,7 @@ export const ReportsPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           ) : (
             <>
               {tab === 'ventas' && ventaDia && (<div className="space-y-4">
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">{[['Subtotal', ventaDia.subtotal], ['Impuestos', ventaDia.impuestos], ['Total', ventaDia.total], ['Transacciones', ventaDia.transacciones], ['Ticket Promedio', ventaDia.ticketPromedio]].map(([l, v]) => (<div key={l} className="bg-white rounded-lg border border-gray-200 p-3 text-center"><p className="text-xs text-gray-500">{l}</p><p className={`text-xl font-bold ${l === 'Total' ? 'text-[var(--color-primary)]' : 'text-gray-900'}`}>{l === 'Transacciones' ? String(v) : `$${fmt2(v as number)}`}</p></div>))}</div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[['Subtotal', ventaDia.subtotal], ['Total', ventaDia.total], ['Transacciones', ventaDia.transacciones], ['Ticket Promedio', ventaDia.ticketPromedio]].map(([l, v]) => (<div key={l} className="bg-white rounded-lg border border-gray-200 p-3 text-center"><p className="text-xs text-gray-500">{l}</p><p className={`text-xl font-bold ${l === 'Total' ? 'text-[var(--color-primary)]' : 'text-gray-900'}`}>{l === 'Transacciones' ? String(v) : `$${fmt2(v as number)}`}</p></div>))}</div>
               </div>)}
               {tab === 'metodos' && metodos.length > 0 && (<table className="w-full text-sm"><thead><tr className="text-left text-xs text-gray-500"><th className="pb-2">Método</th><th className="pb-2 text-right">Total</th><th className="pb-2 text-right">%</th></tr></thead><tbody>{metodos.map((m, i) => (<tr key={i}><td className="py-1.5">{m.metodo}</td><td className="py-1.5 text-right font-semibold">${fmt2(m.total)}</td><td className="py-1.5 text-right">{m.porcentaje.toFixed(1)}%</td></tr>))}</tbody></table>)}
               {tab === 'productos' && productos.length > 0 && (<table className="w-full text-sm"><thead><tr className="text-left text-xs text-gray-500"><th className="pb-2">Producto</th><th className="pb-2 text-right">Cantidad</th><th className="pb-2 text-right">Ingresos</th></tr></thead><tbody>{productos.map((p, i) => (<tr key={i}><td className="py-1.5">{p.descripcion}</td><td className="py-1.5 text-right">{p.cantidad.toFixed(3)}</td><td className="py-1.5 text-right font-semibold">${fmt2(p.ingresos)}</td></tr>))}</tbody></table>)}

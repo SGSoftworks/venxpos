@@ -7,7 +7,7 @@ import { saveFile } from '../lib/saveFile';
 import { Box, CloseX, Plus } from './Icons';
 import * as XLSX from 'xlsx';
 
-type ProductRow = { id: string; codigo_barras: string; descripcion: string; precio_venta: number; costo: number; stock_actual: number; stock_minimo: number; activo: number; requiere_peso: number; tarifa_iva: number; tarifa_impoconsumo: number; categoria_nombre: string | null; };
+type ProductRow = { id: string; codigo_barras: string; descripcion: string; precio_venta: number; costo: number; stock_actual: number; stock_minimo: number; activo: number; requiere_peso: number; categoria_nombre: string | null; };
 type FilterMode = 'todos' | 'stock_bajo' | 'inactivos';
 
 
@@ -22,9 +22,9 @@ export const InventoryManager: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ descripcion: '', codigo_barras: '', precio_venta: '', costo: '', tarifa_iva: '', tarifa_impoconsumo: '', stock_minimo: '' });
+  const [editForm, setEditForm] = useState({ descripcion: '', codigo_barras: '', precio_venta: '', costo: '', stock_minimo: '' });
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [createForm, setCreateForm] = useState({ codigo_barras: '', descripcion: '', precio_venta: '', costo: '', tarifa_iva: '0.19', tarifa_impoconsumo: '0', categoria_id: '', stock_inicial: '', stock_minimo: '10' });
+  const [createForm, setCreateForm] = useState({ codigo_barras: '', descripcion: '', precio_venta: '', costo: '', categoria_id: '', stock_inicial: '', stock_minimo: '10' });
   const [adjustProduct, setAdjustProduct] = useState<{ id: string; name: string; stock: number } | null>(null);
   const [deleteProduct, setDeleteProduct] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,13 +36,13 @@ export const InventoryManager: React.FC = () => {
     setError(null);
     try {
       const [{ data: prodRows }, { data: invRows }] = await Promise.all([
-        supabase.from('productos').select('id, codigo_barras, descripcion, precio_venta, costo, stock_minimo, activo, requiere_peso, tarifa_iva, tarifa_impoconsumo, categorias(nombre)').eq('sucursal_id', session.sucursal_id).order('descripcion'),
+        supabase.from('productos').select('id, codigo_barras, descripcion, precio_venta, costo, stock_minimo, activo, requiere_peso, categorias(nombre)').eq('sucursal_id', session.sucursal_id).order('descripcion'),
         supabase.from('inventario_sucursal').select('producto_id, stock_actual').eq('sucursal_id', session.sucursal_id),
       ]);
       const stockMap = new Map<string, number>(); (invRows || []).forEach(i => stockMap.set(i.producto_id as string, i.stock_actual as number));
       const rows: ProductRow[] = (prodRows || []).map(p => ({
         id: p.id, codigo_barras: p.codigo_barras, descripcion: `${p.descripcion}`, precio_venta: p.precio_venta, costo: p.costo, stock_minimo: p.stock_minimo,
-        activo: p.activo, requiere_peso: p.requiere_peso, tarifa_iva: p.tarifa_iva, tarifa_impoconsumo: p.tarifa_impoconsumo,
+        activo: p.activo, requiere_peso: p.requiere_peso,
         stock_actual: stockMap.get(p.id as string) ?? 0, categoria_nombre: (p.categorias as unknown as { nombre: string } | null)?.nombre ?? null,
       }));
       setProducts(rows);
@@ -64,9 +64,9 @@ export const InventoryManager: React.FC = () => {
       const newId = crypto.randomUUID();
       const stockInit = parseInt(createForm.stock_inicial) || 0;
       const stockMinimo = parseInt(createForm.stock_minimo) || 10
-      await supabase.from('productos').insert({ id: newId, sucursal_id: session.sucursal_id, codigo_barras: createForm.codigo_barras.trim(), descripcion: createForm.descripcion.trim(), precio_venta: precio, costo: parseFloat(createForm.costo || '0'), tarifa_iva: parseFloat(createForm.tarifa_iva), tarifa_impoconsumo: parseFloat(createForm.tarifa_impoconsumo || '0'), activo: true, categoria_id: createForm.categoria_id || null, stock_minimo: stockMinimo, requiere_peso: false });
+      await supabase.from('productos').insert({ id: newId, sucursal_id: session.sucursal_id, codigo_barras: createForm.codigo_barras.trim(), descripcion: createForm.descripcion.trim(), precio_venta: precio, costo: parseFloat(createForm.costo || '0'), activo: true, categoria_id: createForm.categoria_id || null, stock_minimo: stockMinimo, requiere_peso: false });
       await supabase.from('inventario_sucursal').upsert({ sucursal_id: session.sucursal_id, producto_id: newId, stock_actual: stockInit, version: 1 }, { onConflict: 'sucursal_id, producto_id' });
-      setShowCreateForm(false); setCreateForm({ codigo_barras: '', descripcion: '', precio_venta: '', costo: '', tarifa_iva: '0.19', tarifa_impoconsumo: '0', categoria_id: '', stock_inicial: '', stock_minimo: '10' });
+      setShowCreateForm(false); setCreateForm({ codigo_barras: '', descripcion: '', precio_venta: '', costo: '', categoria_id: '', stock_inicial: '', stock_minimo: '10' });
       setStatusMsg('Producto creado'); setTimeout(() => setStatusMsg(null), 2000); loadProducts();
     } catch (e) {
       const msg = e instanceof Error ? e.message : '';
@@ -78,11 +78,11 @@ export const InventoryManager: React.FC = () => {
     }
   };
 
-  const startEdit = (p: ProductRow) => { setEditingId(p.id); setEditForm({ descripcion: p.descripcion, codigo_barras: p.codigo_barras, precio_venta: String(p.precio_venta), costo: String(p.costo), tarifa_iva: String(p.tarifa_iva), tarifa_impoconsumo: String(p.tarifa_impoconsumo), stock_minimo: String(p.stock_minimo) }); };
+  const startEdit = (p: ProductRow) => { setEditingId(p.id); setEditForm({ descripcion: p.descripcion, codigo_barras: p.codigo_barras, precio_venta: String(p.precio_venta), costo: String(p.costo), stock_minimo: String(p.stock_minimo) }); };
   const saveEdit = async () => {
     if (!session || !editingId) return;
     try {
-      await supabase.from('productos').update({ descripcion: editForm.descripcion, codigo_barras: editForm.codigo_barras, precio_venta: parseFloat(editForm.precio_venta), costo: parseFloat(editForm.costo), tarifa_iva: parseFloat(editForm.tarifa_iva), tarifa_impoconsumo: parseFloat(editForm.tarifa_impoconsumo || '0'), stock_minimo: parseInt(editForm.stock_minimo) || 10 }).eq('id', editingId);
+      await supabase.from('productos').update({ descripcion: editForm.descripcion, codigo_barras: editForm.codigo_barras, precio_venta: parseFloat(editForm.precio_venta), costo: parseFloat(editForm.costo), stock_minimo: parseInt(editForm.stock_minimo) || 10 }).eq('id', editingId);
       setEditingId(null); setStatusMsg('Producto actualizado'); setTimeout(() => setStatusMsg(null), 2000); loadProducts();
     } catch (e) { console.error(e); setError('Error al guardar'); }
   };
@@ -104,7 +104,7 @@ export const InventoryManager: React.FC = () => {
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Productos');
       const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
       await saveFile('Plantilla_Productos.xlsx', new Uint8Array(buf as unknown as ArrayBuffer), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); setStatusMsg('Plantilla descargada'); setTimeout(() => setStatusMsg(null), 3000);
-    } catch (e) { setStatusMsg('Error descargando plantilla'); }
+    } catch { setStatusMsg('Error descargando plantilla'); }
   };
 
   const handleExport = async () => {
@@ -115,7 +115,7 @@ export const InventoryManager: React.FC = () => {
       const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
       await saveFile(`inventario_${new Date().toISOString().slice(0, 10)}.xlsx`, new Uint8Array(buf as unknown as ArrayBuffer), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       setStatusMsg('Excel generado'); setTimeout(() => setStatusMsg(null), 3000);
-    } catch (e) { setStatusMsg('Error exportando Excel'); }
+    } catch { setStatusMsg('Error exportando Excel'); }
   };
 
   const exportPdfInventory = async () => {
@@ -123,8 +123,8 @@ export const InventoryManager: React.FC = () => {
     setStatusMsg('Generando PDF...');
     const { data: sRows } = await supabase.from('sucursales').select('nombre').eq('id', session?.sucursal_id).limit(1);
     const name = (sRows && sRows.length > 0) ? sRows[0].nombre : session?.sucursal_id ?? '';
-    const headers = ['Código', 'Descripción', 'Categoría', 'Costo', 'Precio', 'Stock', 'Stock Mín', 'IVA', 'IC'];
-    const data = products.map(p => [p.codigo_barras, p.descripcion, p.categoria_nombre || '', String(p.costo), String(p.precio_venta), String(p.stock_actual), String(p.stock_minimo), `${(p.tarifa_iva * 100).toFixed(0)}%`, p.tarifa_impoconsumo > 0 ? `${(p.tarifa_impoconsumo * 100).toFixed(0)}%` : '0%']);
+    const headers = ['Código', 'Descripción', 'Categoría', 'Costo', 'Precio', 'Stock', 'Stock Mín'];
+    const data = products.map(p => [p.codigo_barras, p.descripcion, p.categoria_nombre || '', String(p.costo), String(p.precio_venta), String(p.stock_actual), String(p.stock_minimo)]);
     const r = await exportPdf(headers, data, { titulo: 'Inventario', sucursal: name, subtitulo: `${products.length} productos` });
     setStatusMsg(r.success ? 'PDF generado' : `Error: ${r.error}`);
     setTimeout(() => setStatusMsg(null), 3000);
@@ -205,8 +205,6 @@ export const InventoryManager: React.FC = () => {
                 descripcion: desc,
                 precio_venta: precio,
                 costo,
-                tarifa_iva: 0.19,
-                tarifa_impoconsumo: 0,
                 activo: true,
                 stock_minimo: stockMinimo,
                 requiere_peso: false,
@@ -308,23 +306,7 @@ export const InventoryManager: React.FC = () => {
               <label className="block text-xs text-gray-500 font-medium mb-1">Stock mínimo</label>
               <input type="number" step="1" min="1" placeholder="10" value={createForm.stock_minimo} onChange={e => setCreateForm({ ...createForm, stock_minimo: e.target.value })} className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_15%,transparent)] transition-all" />
             </div>
-            <div>
-              <label className="block text-xs text-gray-500 font-medium mb-1">IVA</label>
-              <select value={createForm.tarifa_iva} onChange={e => setCreateForm({ ...createForm, tarifa_iva: e.target.value })} className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_15%,transparent)] transition-all">
-                <option value="0.19">19%</option>
-                <option value="0.05">5%</option>
-                <option value="0">Exento</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 font-medium mb-1">Impoconsumo</label>
-              <select value={createForm.tarifa_impoconsumo} onChange={e => setCreateForm({ ...createForm, tarifa_impoconsumo: e.target.value })} className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_15%,transparent)] transition-all">
-                <option value="0">Ninguno</option>
-                <option value="0.08">8%</option>
-                <option value="0.16">16%</option>
-              </select>
-            </div>
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-2 mb-3">
               <button onClick={handleCreateProduct} className="flex-1 bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-700 active:scale-[0.98] transition-all shadow-sm shadow-green-500/20">Crear producto</button>
               <button onClick={() => setShowCreateForm(false)} className="bg-white border border-gray-300 text-gray-500 px-3 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition-colors">Cancelar</button>
             </div>
@@ -359,7 +341,7 @@ export const InventoryManager: React.FC = () => {
         ) : (
         <table className="w-full text-sm">
           <thead><tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
-            <th className="p-3">Código</th><th className="p-3">Descripción</th><th className="p-3 text-right">Precio</th><th className="p-3 text-right">Costo</th><th className="p-3 text-right">Stock Min</th><th className="p-3 text-right">Stock</th><th className="p-3 text-center">IVA</th><th className="p-3 text-center">IC</th><th className="p-3 text-center">Estado</th><th className="p-3 text-center w-44">Acciones</th>
+            <th className="p-3">Código</th><th className="p-3">Descripción</th><th className="p-3 text-right">Precio</th><th className="p-3 text-right">Costo</th><th className="p-3 text-right">Stock Min</th><th className="p-3 text-right">Stock</th><th className="p-3 text-center">Estado</th><th className="p-3 text-center w-44">Acciones</th>
           </tr></thead>
           <tbody>{paged.map(p => (
             <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
@@ -371,8 +353,6 @@ export const InventoryManager: React.FC = () => {
                   <td className="p-1"><input type="number" value={editForm.costo} onChange={e => setEditForm({ ...editForm, costo: e.target.value })} className="w-20 bg-white border border-[var(--color-primary-border)] rounded px-2 py-1 text-xs text-right" /></td>
                   <td className="p-1"><input type="number" value={editForm.stock_minimo} onChange={e => setEditForm({ ...editForm, stock_minimo: e.target.value })} className="w-16 bg-white border border-[var(--color-primary-border)] rounded px-2 py-1 text-xs text-right" title="Stock mínimo" /></td>
                   <td className="p-3 text-right text-gray-500">{p.stock_actual}</td>
-                  <td className="p-1"><select value={editForm.tarifa_iva} onChange={e => setEditForm({ ...editForm, tarifa_iva: e.target.value })} className="bg-white border border-[var(--color-primary-border)] rounded px-2 py-1 text-xs"><option value="0">0%</option><option value="0.05">5%</option><option value="0.19">19%</option></select></td>
-                  <td className="p-1"><select value={editForm.tarifa_impoconsumo} onChange={e => setEditForm({ ...editForm, tarifa_impoconsumo: e.target.value })} className="bg-white border border-[var(--color-primary-border)] rounded px-2 py-1 text-xs"><option value="0">0%</option><option value="0.08">8%</option></select></td>
                   <td className="p-3 text-center"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{p.activo ? 'Activo' : 'Inactivo'}</span></td>
                   <td className="p-1 text-center"><div className="flex gap-1"><button onClick={saveEdit} className="text-xs bg-[var(--color-primary)] text-white px-2 py-1 rounded">Guardar</button><button onClick={() => setEditingId(null)} className="text-xs bg-white border px-2 py-1 rounded">Cancelar</button></div></td>
                 </>
@@ -384,8 +364,6 @@ export const InventoryManager: React.FC = () => {
                   <td className="p-3 text-right text-gray-500">${fmtPrice(p.costo)}</td>
                   <td className="p-3 text-right text-gray-500 text-xs">{p.stock_minimo}</td>
                   <td className="p-3 text-right"><div className="flex items-center justify-end gap-1.5"><span className={`inline-block w-2 h-2 rounded-full ${p.stock_actual <= 0 ? 'bg-red-500' : p.stock_actual <= p.stock_minimo ? 'bg-amber-400' : 'bg-green-500'}`} /><span className={`font-semibold ${p.stock_actual <= 0 ? 'text-red-600' : p.stock_actual <= p.stock_minimo ? 'text-amber-600' : 'text-gray-700'}`}>{p.stock_actual}</span></div></td>
-                  <td className="p-3 text-center text-xs text-gray-500">{(p.tarifa_iva * 100).toFixed(0)}%</td>
-                  <td className="p-3 text-center text-xs text-gray-500">{p.tarifa_impoconsumo > 0 ? `${(p.tarifa_impoconsumo * 100).toFixed(0)}%` : '-'}</td>
                   <td className="p-3 text-center"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{p.activo ? 'Activo' : 'Inactivo'}</span></td>
                   <td className="p-3 text-center"><div className="flex gap-1 justify-center">
                     <button onClick={() => startEdit(p)} className="text-xs bg-white border border-gray-300 text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-50">Editar</button>

@@ -21,14 +21,6 @@ export interface CartItem {
   precio_original: number;
   descuento_porcentaje: number;
   subtotal: number;
-  tarifa_iva: number;
-  tarifa_impoconsumo: number;
-}
-
-export interface TaxBreakdownRow {
-  label: string;
-  base: number;
-  tax: number;
 }
 
 export interface CompletedSale {
@@ -40,13 +32,9 @@ export interface CompletedSale {
     precio_original: number;
     descuento_porcentaje: number;
     subtotal: number;
-    tarifa_iva: number;
-    tarifa_impoconsumo: number;
   }>;
   subtotal: number;
-  impuestos: number;
   total: number;
-  taxBreakdown: TaxBreakdownRow[];
   metodoPago: string;
   montoRecibido: number;
   cambioEntregado: number;
@@ -69,9 +57,7 @@ interface AppState {
 
   cart: CartItem[];
   cartSubtotal: number;
-  cartTaxes: number;
   cartTotal: number;
-  cartTaxBreakdown: TaxBreakdownRow[];
 
   lastCompletedSale: CompletedSale | null;
 
@@ -102,45 +88,11 @@ const calcSubtotal = (item: CartItem) => {
 };
 
 const calculateTotals = (cart: CartItem[]) => {
-  let cartTotal = 0;
-  let cartSubtotal = 0;
-  let cartTaxes = 0;
-  const buckets: Record<string, { label: string; base: number; tax: number }> = {};
-  const key = (type: string, rate: number) => `${type}-${rate}`;
-  const label = (type: string, rate: number) => rate === 0 ? `${type} 0% (Exento)` : `${type} ${(rate * 100).toFixed(0)}%`;
-
-  for (const item of cart) {
-    const paid = item.subtotal;
-    cartTotal += paid;
-
-    const totalRate = item.tarifa_iva + item.tarifa_impoconsumo;
-    const base = totalRate > 0 ? paid / (1 + totalRate) : paid;
-    const iva = base * item.tarifa_iva;
-    const ic = base * item.tarifa_impoconsumo;
-
-    cartSubtotal += base;
-    cartTaxes += iva + ic;
-
-    if (item.tarifa_iva > 0) {
-      const k = key('IVA', item.tarifa_iva);
-      if (!buckets[k]) buckets[k] = { label: label('IVA', item.tarifa_iva), base: 0, tax: 0 };
-      buckets[k].base += base;
-      buckets[k].tax += base * item.tarifa_iva;
-    }
-    if (item.tarifa_impoconsumo > 0) {
-      const k = key('IC', item.tarifa_impoconsumo);
-      if (!buckets[k]) buckets[k] = { label: label('Impoconsumo', item.tarifa_impoconsumo), base: 0, tax: 0 };
-      buckets[k].base += base;
-      buckets[k].tax += base * item.tarifa_impoconsumo;
-    }
-  }
-
+  const cartSubtotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
   return {
     cart,
     cartSubtotal,
-    cartTaxes,
-    cartTotal,
-    cartTaxBreakdown: Object.values(buckets),
+    cartTotal: cartSubtotal,
   };
 };
 
@@ -152,9 +104,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   cart: [],
   cartSubtotal: 0,
-  cartTaxes: 0,
   cartTotal: 0,
-  cartTaxBreakdown: [],
 
   lastCompletedSale: null,
 
@@ -245,9 +195,7 @@ export const useAppStore = create<AppState>((set) => ({
     set({
       cart: [],
       cartSubtotal: 0,
-      cartTaxes: 0,
       cartTotal: 0,
-      cartTaxBreakdown: [],
     }),
 }));
 

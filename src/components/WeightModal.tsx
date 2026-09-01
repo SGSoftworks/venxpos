@@ -7,8 +7,6 @@ interface Props {
   codigoBarras: string;
   descripcion: string;
   precioUnitario: number;
-  tarifaIva: number;
-  tarifaImpoconsumo: number;
   onConfirm: (cantidad: number) => void;
   onCancel: () => void;
 }
@@ -18,8 +16,6 @@ export const WeightModal: React.FC<Props> = ({
   codigoBarras,
   descripcion,
   precioUnitario,
-  tarifaIva,
-  tarifaImpoconsumo,
   onConfirm,
   onCancel,
 }) => {
@@ -52,8 +48,6 @@ export const WeightModal: React.FC<Props> = ({
       descripcion,
       cantidad: qty,
       precio_unitario: precioUnitario,
-      tarifa_iva: tarifaIva,
-      tarifa_impoconsumo: tarifaImpoconsumo,
     });
 
     onConfirm(qty);

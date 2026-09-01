@@ -4,34 +4,34 @@ import { supabase } from '../lib/supabase';
 import { CloseX } from './Icons';
 
 export const PaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { session, cart, cartSubtotal, cartTaxes, cartTotal, clearCart, setLastCompletedSale } = useAppStore();
+  const { session, cart, cartSubtotal, cartTotal, clearCart, setLastCompletedSale } = useAppStore();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  type Metodo = 'EFECTIVO' | 'TARJETA' | 'BILLETERA' | 'MIXTO';
+  type Metodo = 'EFECTIVO' | 'BILLETERA' | 'QR' | 'MIXTO';
   const [method, setMethod] = useState<Metodo>('EFECTIVO');
   const [received, setReceived] = useState<string>('');
   const [mixEfectivo, setMixEfectivo] = useState<string>('');
-  const [mixTarjeta, setMixTarjeta] = useState<string>('');
+  const [mixQR, setMixQR] = useState<string>('');
   const [processing, setProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const receivedAmount = parseFloat(received) || 0;
   const change = receivedAmount - cartTotal;
   const mixEfectivoNum = parseFloat(mixEfectivo) || 0;
-  const mixTarjetaNum = parseFloat(mixTarjeta) || 0;
-  const mixOk = Math.abs((mixEfectivoNum + mixTarjetaNum) - cartTotal) < 0.01;
+  const mixQRNum = parseFloat(mixQR) || 0;
+  const mixOk = Math.abs((mixEfectivoNum + mixQRNum) - cartTotal) < 0.01;
   const isValid = method === 'EFECTIVO' ? receivedAmount >= cartTotal : method === 'MIXTO' ? mixOk : true;
 
   useEffect(() => { inputRef.current?.focus(); }, [method]);
 
   const computeVentaHash = useCallback(async (ventaId: string, fechaHora: string): Promise<string> => {
-    const payload = `${ventaId}|${cartSubtotal}|${cartTaxes}|${cartTotal}|${fechaHora}`;
+    const payload = `${ventaId}|${cartSubtotal}|${cartTotal}|${fechaHora}`;
     const encoder = new TextEncoder();
     const data = encoder.encode(payload);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-  }, [cartSubtotal, cartTaxes, cartTotal]);
+  }, [cartSubtotal, cartTotal]);
 
   const nextTicketNumber = useCallback(async (sucursalId: string): Promise<number> => {
     const { data } = await supabase.from('ventas').select('ticket_number').eq('sucursal_id', sucursalId).order('ticket_number', { ascending: false }).limit(1);
@@ -46,7 +46,7 @@ export const PaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       const ventaId = crypto.randomUUID();
       const fechaHora = new Date().toISOString();
       const ticketNumber = await nextTicketNumber(session.sucursal_id);
-      const mRecibido = method === 'EFECTIVO' ? receivedAmount : method === 'MIXTO' ? mixEfectivoNum + mixTarjetaNum : cartTotal;
+      const mRecibido = method === 'EFECTIVO' ? receivedAmount : method === 'MIXTO' ? mixEfectivoNum + mixQRNum : cartTotal;
       const mCambio = method === 'EFECTIVO' ? change : 0;
       const hash = await computeVentaHash(ventaId, fechaHora);
 
@@ -68,7 +68,7 @@ export const PaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
       const { error: saleError } = await supabase.from('ventas').insert({
         id: ventaId, sucursal_id: session.sucursal_id, cajero_id: session.usuario_db_id ?? session.id,
-        subtotal: cartSubtotal, impuestos: cartTaxes, total: cartTotal, metodo_pago: method,
+        subtotal: cartSubtotal, total: cartTotal, metodo_pago: method,
         monto_recibido: mRecibido, cambio_entregado: mCambio, hash, ticket_number: ticketNumber, fecha_hora: fechaHora,
       });
       if (saleError) throw saleError;
@@ -77,7 +77,6 @@ export const PaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
         const detalles = cart.map((item) => ({
           id: crypto.randomUUID(), venta_id: ventaId, producto_id: item.producto_id,
           cantidad_o_peso: item.cantidad, precio_unitario: item.precio_unitario, subtotal: item.subtotal,
-          tarifa_iva_aplicada: item.tarifa_iva, tarifa_impoconsumo_aplicada: item.tarifa_impoconsumo,
           descuento: 0, costo_aplicado: null,
         }));
         const { error: detError } = await supabase.from('venta_detalles').insert(detalles);
@@ -96,16 +95,15 @@ export const PaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       }
 
       const metodoPagoDisplay = method === 'MIXTO'
-        ? `MIXTO (EFECTIVO $${mixEfectivoNum.toLocaleString()} + TARJETA $${mixTarjetaNum.toLocaleString()})` : method;
+        ? `MIXTO (EFECTIVO $${mixEfectivoNum.toLocaleString()} + QR $${mixQRNum.toLocaleString()})` : method;
 
       setLastCompletedSale({
         ticketNumber, items: cart.map((item) => ({
           descripcion: item.descripcion, cantidad: item.cantidad, precio_unitario: item.precio_unitario,
           precio_original: item.precio_original, descuento_porcentaje: item.descuento_porcentaje, subtotal: item.subtotal,
-          tarifa_iva: item.tarifa_iva, tarifa_impoconsumo: item.tarifa_impoconsumo,
         })),
-        subtotal: cartSubtotal, impuestos: cartTaxes, total: cartTotal,
-        taxBreakdown: useAppStore.getState().cartTaxBreakdown, metodoPago: metodoPagoDisplay,
+        subtotal: cartSubtotal, total: cartTotal,
+        metodoPago: metodoPagoDisplay,
         montoRecibido: mRecibido, cambioEntregado: mCambio, fecha: fechaHora,
       });
       clearCart();
@@ -115,7 +113,7 @@ export const PaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       console.error('Error guardando la venta', e);
       setErrorMessage(e instanceof Error ? e.message : 'Error al guardar la venta');
     } finally { setProcessing(false); }
-  }, [processing, session, method, receivedAmount, mixEfectivoNum, mixTarjetaNum, cartTotal, cart, cartSubtotal, cartTaxes, change, computeVentaHash, nextTicketNumber, setLastCompletedSale, clearCart, onClose]);
+  }, [processing, session, method, receivedAmount, mixEfectivoNum, mixQRNum, cartTotal, cart, cartSubtotal, change, computeVentaHash, nextTicketNumber, setLastCompletedSale, clearCart, onClose]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-[fadeIn_150ms_ease-out]" onClick={onClose}>
@@ -130,10 +128,10 @@ export const PaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             <p className="text-4xl font-black text-[var(--color-primary)]">${cartTotal.toLocaleString()}</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {(['EFECTIVO', 'TARJETA', 'BILLETERA', 'MIXTO'] as Metodo[]).map((m) => (
+            {(['EFECTIVO', 'BILLETERA', 'QR', 'MIXTO'] as Metodo[]).map((m) => (
               <button key={m} onClick={() => setMethod(m)}
                 className={`py-2.5 rounded-lg text-sm font-semibold transition-colors ${method === m ? 'bg-[var(--color-primary)] text-white' : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
-                {m === 'BILLETERA' ? 'Billetera' : m.charAt(0) + m.slice(1).toLowerCase()}
+                {m === 'BILLETERA' ? 'Billetera' : m === 'QR' ? 'Código QR' : m.charAt(0) + m.slice(1).toLowerCase()}
               </button>
             ))}
           </div>
@@ -156,9 +154,9 @@ export const PaymentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             <div className="space-y-2">
               <div><label className="text-xs text-gray-500">Efectivo</label>
                 <input type="number" step="0.01" className="w-full bg-white border border-gray-300 rounded-lg p-2 text-gray-900 outline-none" value={mixEfectivo} onChange={(e) => setMixEfectivo(e.target.value)} /></div>
-              <div><label className="text-xs text-gray-500">Tarjeta</label>
-                <input type="number" step="0.01" className="w-full bg-white border border-gray-300 rounded-lg p-2 text-gray-900 outline-none" value={mixTarjeta} onChange={(e) => setMixTarjeta(e.target.value)} /></div>
-              <p className="text-xs text-gray-400">{mixOk ? 'Coincide' : `Faltan $${(cartTotal - mixEfectivoNum - mixTarjetaNum).toLocaleString()}`}</p>
+              <div><label className="text-xs text-gray-500">Código QR</label>
+                <input type="number" step="0.01" className="w-full bg-white border border-gray-300 rounded-lg p-2 text-gray-900 outline-none" value={mixQR} onChange={(e) => setMixQR(e.target.value)} /></div>
+              <p className="text-xs text-gray-400">{mixOk ? 'Coincide' : `Faltan $${(cartTotal - mixEfectivoNum - mixQRNum).toLocaleString()}`}</p>
             </div>
           )}
           {errorMessage && <div className="bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg p-3">{errorMessage}</div>}

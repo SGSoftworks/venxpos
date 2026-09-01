@@ -11,14 +11,14 @@ export const SaleHistory: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
-  const [ventas, setVentas] = useState<{ id: string; ticket_number: number; total: number; subtotal: number; impuestos: number; metodo_pago: string; fecha_hora: string }[]>([]);
-  const [selectedVenta, setSelectedVenta] = useState<{ id: string; ticket_number: number; total: number; subtotal: number; impuestos: number; metodo_pago: string; fecha_hora: string } | null>(null);
-  const [detalles, setDetalles] = useState<{ id: string; producto_id: string; descripcion: string; cantidad_o_peso: number; precio_unitario: number; subtotal: number; tarifa_iva_aplicada: number; tarifa_impoconsumo_aplicada: number }[]>([]);
+  const [ventas, setVentas] = useState<{ id: string; ticket_number: number; total: number; subtotal: number; metodo_pago: string; fecha_hora: string }[]>([]);
+  const [selectedVenta, setSelectedVenta] = useState<{ id: string; ticket_number: number; total: number; subtotal: number; metodo_pago: string; fecha_hora: string } | null>(null);
+  const [detalles, setDetalles] = useState<{ id: string; producto_id: string; descripcion: string; cantidad_o_peso: number; precio_unitario: number; subtotal: number }[]>([]);
   const [fechaDesde, setFechaDesde] = useState(() => new Date().toISOString().slice(0, 10));
   const [fechaHasta, setFechaHasta] = useState(() => new Date().toISOString().slice(0, 10));
 
   const cargarVentas = async () => {
-    const { data } = await supabase.from('ventas').select('id, ticket_number, total, subtotal, impuestos, metodo_pago, fecha_hora').gte('fecha_hora', fechaDesde).lte('fecha_hora', fechaHasta + 'T23:59:59.999Z').order('fecha_hora', { ascending: false }).limit(200);
+    const { data } = await supabase.from('ventas').select('id, ticket_number, total, subtotal, metodo_pago, fecha_hora').gte('fecha_hora', fechaDesde).lte('fecha_hora', fechaHasta + 'T23:59:59.999Z').order('fecha_hora', { ascending: false }).limit(200);
     if (data) setVentas(data as typeof ventas);
   };
 
@@ -37,8 +37,8 @@ export const SaleHistory: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const originalSale = lastCompletedSale;
     setLastCompletedSale({
       ticketNumber: selectedVenta.ticket_number,
-      items: detalles.map(d => ({ descripcion: d.descripcion, cantidad: d.cantidad_o_peso, precio_unitario: d.precio_unitario, precio_original: d.precio_unitario, descuento_porcentaje: 0, subtotal: d.subtotal, tarifa_iva: d.tarifa_iva_aplicada, tarifa_impoconsumo: d.tarifa_impoconsumo_aplicada })),
-      subtotal: selectedVenta.subtotal, impuestos: selectedVenta.impuestos, total: selectedVenta.total, taxBreakdown: [], metodoPago: selectedVenta.metodo_pago, montoRecibido: 0, cambioEntregado: 0, fecha: selectedVenta.fecha_hora,
+      items: detalles.map(d => ({ descripcion: d.descripcion, cantidad: d.cantidad_o_peso, precio_unitario: d.precio_unitario, precio_original: d.precio_unitario, descuento_porcentaje: 0, subtotal: d.subtotal })),
+      subtotal: selectedVenta.subtotal, total: selectedVenta.total, metodoPago: selectedVenta.metodo_pago, montoRecibido: 0, cambioEntregado: 0, fecha: selectedVenta.fecha_hora,
     });
     setTimeout(() => { try { window.print(); } catch { /* ok */ } if (originalSale) setLastCompletedSale(originalSale); }, 300);
   };
@@ -61,7 +61,7 @@ export const SaleHistory: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             {selectedVenta && (<div className="space-y-4">
               <div><h3 className="text-sm font-semibold text-gray-700">Ticket #{selectedVenta.ticket_number}</h3><p className="text-xs text-gray-500">{new Date(selectedVenta.fecha_hora).toLocaleString('es-CO')} — {selectedVenta.metodo_pago}</p></div>
               <div className="space-y-1">{detalles.map(d => (<div key={d.id} className="flex justify-between text-sm py-1 border-b border-gray-100"><span>{d.descripcion} x {d.cantidad_o_peso}</span><span>${fmt2(d.subtotal)}</span></div>))}</div>
-              <div className="border-t border-gray-200 pt-2 space-y-1"><div className="flex justify-between text-sm"><span>Subtotal</span><span>${fmt2(selectedVenta.subtotal)}</span></div><div className="flex justify-between text-sm"><span>Impuestos</span><span>${fmt2(selectedVenta.impuestos)}</span></div><div className="flex justify-between font-bold text-sm"><span>Total</span><span>${fmt2(selectedVenta.total)}</span></div></div>
+              <div className="border-t border-gray-200 pt-2 space-y-1"><div className="flex justify-between text-sm"><span>Subtotal</span><span>${fmt2(selectedVenta.subtotal)}</span></div><div className="flex justify-between font-bold text-sm"><span>Total</span><span>${fmt2(selectedVenta.total)}</span></div></div>
               <button onClick={reimprimir} className="bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-primary-dark)]">Reimprimir Ticket</button>
             </div>)}
           </div>

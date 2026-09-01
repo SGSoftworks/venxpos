@@ -22,7 +22,7 @@ import iconApp from '../assets/branding/icon-app.png';
 
 type ProductRow = {
   id: string; codigo_barras: string; descripcion: string; precio_venta: number;
-  costo: number; requiere_peso: number; tarifa_iva: number; tarifa_impoconsumo: number;
+  costo: number; requiere_peso: number;
   categoria_nombre?: string;
 };
 
@@ -48,7 +48,6 @@ export const POSLayout: React.FC = () => {
     cart,
     cartSubtotal,
     cartTotal,
-    cartTaxBreakdown,
     addToCart,
     updateItemQuantity,
     removeItem,
@@ -132,7 +131,6 @@ export const POSLayout: React.FC = () => {
           addToCart({
             producto_id: p.id, codigo_barras: p.codigo_barras, descripcion: p.descripcion,
             cantidad: weightKg, precio_unitario: p.precio_venta,
-            tarifa_iva: p.tarifa_iva, tarifa_impoconsumo: p.tarifa_impoconsumo,
           });
           setSearchResults([]); setSelectedCartIndex(cart.length);
           setScanFeedback('success'); playBeep(); setTimeout(() => setScanFeedback(null), 300);
@@ -149,8 +147,6 @@ export const POSLayout: React.FC = () => {
           descripcion: p.descripcion,
           cantidad: p.requiere_peso ? weightKg : 1,
           precio_unitario: p.precio_venta,
-          tarifa_iva: p.tarifa_iva,
-          tarifa_impoconsumo: p.tarifa_impoconsumo,
         });
         setSearchResults([]);
         setSelectedCartIndex(cart.length);
@@ -186,7 +182,7 @@ export const POSLayout: React.FC = () => {
         const term = `%${value}%`;
         const { data: results } = await supabase
           .from('productos')
-          .select('id, codigo_barras, descripcion, precio_venta, costo, requiere_peso, tarifa_iva, tarifa_impoconsumo, categorias(nombre)')
+          .select('id, codigo_barras, descripcion, precio_venta, costo, requiere_peso, categorias(nombre)')
           .eq('activo', true)
           .eq('sucursal_id', session?.sucursal_id ?? '')
           .or(`descripcion.ilike.${term},codigo_barras.ilike.${term}`)
@@ -225,7 +221,7 @@ export const POSLayout: React.FC = () => {
       const term = `%${searchValue}%`;
       const { data: results } = await supabase
         .from('productos')
-        .select('id, codigo_barras, descripcion, precio_venta, costo, requiere_peso, tarifa_iva, tarifa_impoconsumo, categorias(nombre)')
+        .select('id, codigo_barras, descripcion, precio_venta, costo, requiere_peso, categorias(nombre)')
         .eq('activo', true)
         .eq('sucursal_id', session?.sucursal_id ?? '')
         .or(`descripcion.ilike.${term},codigo_barras.ilike.${term}`)
@@ -252,8 +248,6 @@ export const POSLayout: React.FC = () => {
       descripcion: p.descripcion,
       cantidad: 1,
       precio_unitario: p.precio_venta,
-      tarifa_iva: p.tarifa_iva,
-      tarifa_impoconsumo: p.tarifa_impoconsumo,
     });
     setSearchResults([]);
     setSearchValue('');
@@ -551,7 +545,7 @@ export const POSLayout: React.FC = () => {
       try {
         const { data: rows } = await supabase
           .from('productos')
-          .select('id, codigo_barras, descripcion, precio_venta, costo, requiere_peso, tarifa_iva, tarifa_impoconsumo')
+          .select('id, codigo_barras, descripcion, precio_venta, costo, requiere_peso')
           .eq('codigo_barras', code)
           .eq('sucursal_id', st.sucursal_id)
           .eq('activo', true)
@@ -570,7 +564,7 @@ export const POSLayout: React.FC = () => {
           if (p.requiere_peso) {
             setWeightProduct(p);
           } else {
-            useAppStore.getState().addToCart({ producto_id: p.id, codigo_barras: p.codigo_barras, descripcion: p.descripcion, cantidad: 1, precio_unitario: p.precio_venta, tarifa_iva: p.tarifa_iva, tarifa_impoconsumo: p.tarifa_impoconsumo });
+            useAppStore.getState().addToCart({ producto_id: p.id, codigo_barras: p.codigo_barras, descripcion: p.descripcion, cantidad: 1, precio_unitario: p.precio_venta });
           }
           setSearchResults([]);
         } else if (currentView === 'inventario') {
@@ -727,9 +721,6 @@ export const POSLayout: React.FC = () => {
                   <div className="flex flex-col flex-1 min-w-0">
                     <span className="font-semibold text-gray-900 truncate">
                       {item.descripcion}
-                      {item.tarifa_iva === 0 && item.tarifa_impoconsumo === 0 && (
-                        <span className="text-amber-600 text-xs ml-1.5 font-medium">(Exento)</span>
-                      )}
                     </span>
                     <span className="text-gray-500 text-xs">
                       {item.cantidad.toFixed(3)} und × ${item.precio_unitario.toLocaleString()}
@@ -776,18 +767,6 @@ export const POSLayout: React.FC = () => {
                 <span>Subtotal:</span>
                 <span className="tabular-nums text-gray-700">${fmt2(cartSubtotal)}</span>
               </div>
-              {cartTaxBreakdown.map((row) => (
-                <div key={row.label} className="flex justify-between text-gray-500 text-xs mb-1 ml-2">
-                  <span>{row.label}:</span>
-                  <span className="tabular-nums">${fmt2(row.tax)}</span>
-                </div>
-              ))}
-              {cartTaxBreakdown.length === 0 && cart.length > 0 && (
-                <div className="flex justify-between text-gray-400 text-xs mb-1 ml-2">
-                  <span>Impuestos: Exento / 0%</span>
-                  <span className="tabular-nums">$0</span>
-                </div>
-              )}
               <div className="flex justify-between items-end border-t border-gray-200 pt-3 mt-2">
                 <span className="text-lg font-bold text-gray-900">Total</span>
                 <span className="text-3xl font-bold text-gray-900 tabular-nums">
@@ -993,8 +972,6 @@ export const POSLayout: React.FC = () => {
           codigoBarras={weightProduct.codigo_barras}
           descripcion={weightProduct.descripcion}
           precioUnitario={weightProduct.precio_venta}
-          tarifaIva={weightProduct.tarifa_iva}
-          tarifaImpoconsumo={weightProduct.tarifa_impoconsumo}
           onConfirm={() => { setWeightProduct(null); searchInputRef.current?.focus(); }}
           onCancel={() => { setWeightProduct(null); searchInputRef.current?.focus(); }}
         />

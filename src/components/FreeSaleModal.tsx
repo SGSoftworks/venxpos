@@ -41,7 +41,7 @@ export const FreeSaleModal: React.FC<FreeSaleModalProps> = ({ initialValue = '',
     const code = `VL-${cat.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/ /g, '_')}`;
     let { data } = await supabase
       .from('productos')
-      .select('id, codigo_barras, descripcion, precio_venta, tarifa_iva, tarifa_impoconsumo')
+      .select('id, codigo_barras, descripcion, precio_venta')
       .eq('codigo_barras', code)
       .eq('sucursal_id', session?.sucursal_id)
       .limit(1);
@@ -56,8 +56,6 @@ export const FreeSaleModal: React.FC<FreeSaleModalProps> = ({ initialValue = '',
           descripcion: `Venta Libre ${cat}`,
           precio_venta: 0,
           costo: 0,
-          tarifa_iva: 0,
-          tarifa_impoconsumo: 0,
           stock_minimo: 999,
           categoria_id: null,
         });
@@ -75,8 +73,6 @@ export const FreeSaleModal: React.FC<FreeSaleModalProps> = ({ initialValue = '',
         codigo_barras: code,
         descripcion: `Venta Libre ${cat}`,
         precio_venta: 0,
-        tarifa_iva: 0,
-        tarifa_impoconsumo: 0,
       }];
     }
     if (data && data.length > 0) {
@@ -92,7 +88,6 @@ export const FreeSaleModal: React.FC<FreeSaleModalProps> = ({ initialValue = '',
       addToCart({
         producto_id: p.id, codigo_barras: p.codigo_barras, descripcion: p.descripcion,
         cantidad: 1, precio_unitario: v,
-        tarifa_iva: p.tarifa_iva as number, tarifa_impoconsumo: p.tarifa_impoconsumo as number,
       });
       onClose();
       onSuccess?.();
